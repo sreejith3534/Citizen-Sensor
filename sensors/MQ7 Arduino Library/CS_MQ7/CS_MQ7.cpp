@@ -1,87 +1,53 @@
 
-/*  
-	CS_MQ7_02.h - Library for reading the MQ-7 Carbon Monoxide Sensor
-	Breakout, as part of the Citizen Sensor project.	
-	http://citizensensor.cc
-	
-	Released into the public domain.
-	
-	Created by J Saavedra, October 2010.
-	http://jos.ph
-
+/*
+  MQ7_LG.h - Library for MQ7 Monoxide Gas Sensor v1.3 hardware.
+  Created by Laurent Gibergues, January 21, 2015
+  Released into the public domain.
+  Hardware v1.3 need modification : see documentation please
+  
 */
 
-#if (ARDUINO >= 100)
-    #include "Arduino.h"
-#else
-    #include <avr/io.h>
-    #include "WProgram.h"
-#endif
 
-#include "CS_MQ7.h"
+#ifndef MQ7_LG_h
+#define MQ7_LG_h
 
-CS_MQ7::CS_MQ7(int CoTogPin, int CoIndicatorPin){
+#include <inttypes.h>
 
-	pinMode(CoIndicatorPin, OUTPUT);
-	pinMode(CoTogPin, OUTPUT);
-	
-	_CoIndicatorPin = CoIndicatorPin;
-	_CoTogPin = CoTogPin;
-    
-    indicatorAttached = true; //we are using an LED to show heater
-	
-	time = 0;
-	currTime = 0;
-	prevTime = 0;
-	currCoPwrTimer = 0;
-	CoPwrState = LOW;
-  	currCoPwrTimer = 500;
-	
-}
 
-CS_MQ7::CS_MQ7(int CoTogPin){
-    
-	pinMode(CoTogPin, OUTPUT);
-	
-    indicatorAttached = false; //not using an LED
-    
-	_CoTogPin = CoTogPin;
-	
-	time = 0;
-	currTime = 0;
-	prevTime = 0;
-	currCoPwrTimer = 0;
-	CoPwrState = LOW;
-  	currCoPwrTimer = 500;
-    
-}
 
-void CS_MQ7::CoPwrCycler(){
+class MQ7_LG {
+public :
+  MQ7_LG(uint8_t VRLPin, uint8_t HeaterCtrlPin, int8_t DOutPin = -1, int8_t HeaterVoltagePin = -1);
+  void init();
+  void run();
+  int read();
+  float getVRL();
+  int getDOut();
+  float getHeaterVoltage();
+  typedef enum states {HIGH_HEATING = 0, LOW_HEATING} state_t;
   
-  currTime = millis();
-   
-  if (currTime - prevTime > currCoPwrTimer){
-    prevTime = currTime;
-    
-    if(CoPwrState == LOW){
-      CoPwrState = HIGH;
-      currCoPwrTimer = 60000;  //60 seconds at 5v
-    }
-    else{
-      CoPwrState = LOW;
-      currCoPwrTimer = 90000;  //90 seconds at 1.4v
-    }
-    if(indicatorAttached) digitalWrite(_CoIndicatorPin, CoPwrState);
-    digitalWrite(_CoTogPin, CoPwrState);
-  }
-}
+private :
+  int  _ppmCO;
+  uint8_t _VRLPin;
+  uint8_t _heaterCtrlPin;
+  int8_t _DOutPin;
+  int8_t _heaterVoltagePin;
+  bool _HeaterVoltageIsConnected;
+  bool _DOutIsConnected;
+  state_t _state;
+  unsigned long _prevTime;
 
-boolean CS_MQ7::currentState(){
-	
-	if(CoPwrState == LOW){
-		return false;
-	}
-	else{
-		return true;
-	}
-}
+  //functions
+  int toPpm(float VRL);
+  
+  // Specifics data
+  const static unsigned long HIGH_HEATING_TIME = 60 * 1000L;    // ms
+  const static unsigned long LOW_HEATING_TIME = 90 * 1000L;     // ms
+  const static unsigned RL = 10000;              // Ohms
+  const static unsigned R0 = 2000;               // Ohms
+  const static float    VCC_HEATER = 5.29;       // Volts
+  const static float    COEF_A = -1.6;          // See MQ7 documentation :
+  const static float    CONSTANT_B = 100;        // log(ppmCO) = COEF_A * log(Rs/R0) + log(CONSTANT_B)
+};
+
+#endif
